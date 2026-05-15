@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Compass Campaign Planner",
+  "schemaVersion": 1,
+  "description": "COMPASS — интерактивный 7-шаговый планировщик рекламных кампаний на основе Binet & Field / IPA Databank. Рассчитывает сплит бюджета бренд/активация, ESOV, аудиторную стратегию, каналы и KPI."
+}
+</script>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COMPASS — Campaign Planner</title>
+<style>
+:root {
+  color-scheme: light;
+  --coral: #FF7763;
+  --yellow: #FEC701;
+  --slate: #474B52;
+  --mint: #8BE1D2;
+  --white: #FFFFFF;
+  --gray-light: #F5F5F5;
+  --gray-mid: #DCDEE1;
+  --gray-muted: #AAAAAA;
+  --yellow-tint: rgba(254,199,1,0.10);
+  --coral-tint: rgba(255,119,99,0.08);
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --radius: 12px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-hover: 0 4px 20px rgba(0,0,0,0.14);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--gray-light); color: var(--slate); min-height: 100vh; }
+
+.header { background: var(--slate); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
+.header-logo { font-weight: 900; font-size: 20px; letter-spacing: 0.1em; text-transform: uppercase; }
+.header-logo span:first-child { color: var(--coral); }
+.header-logo span:last-child  { color: var(--white); margin-left: 8px; }
+.header-sub { color: var(--gray-muted); font-size: 10px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; margin-top: 2px; }
+.header-right { color: var(--gray-muted); font-size: 11px; font-weight: 600; }
+
+.progress-bar { background: var(--white); padding: 12px 28px; border-bottom: 1px solid var(--gray-mid); display: flex; align-items: center; }
+.step-dot { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; position: relative; cursor: pointer; }
+.step-dot:not(:last-child)::after { content: ''; position: absolute; top: 13px; left: 58%; right: -38%; height: 2px; background: var(--gray-mid); z-index: 0; }
+.step-dot.completed:not(:last-child)::after { background: var(--coral); }
+.dot-circle { width: 26px; height: 26px; border-radius: 50%; background: var(--gray-mid); color: var(--gray-muted); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; transition: all 0.2s; }
+.step-dot.active   .dot-circle { background: var(--coral); color: white; }
+.step-dot.completed .dot-circle { background: var(--slate); color: white; }
+.dot-label { font-size: 9px; font-weight: 700; color: var(--gray-muted); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
+.step-dot.active   .dot-label { color: var(--coral); }
+.step-dot.completed .dot-label { color: var(--slate); }
+
+.main { max-width: 780px; margin: 32px auto; padding: 0 16px 60px; }
+.screen { display: none; }
+.screen.active { display: block; }
+
+.card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px 32px; margin-bottom: 16px; }
+.step-header { margin-bottom: 22px; }
+.step-number { font-size: 10px; font-weight: 800; color: var(--coral); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
+.step-title { font-size: 22px; font-weight: 900; color: var(--slate); text-transform: uppercase; letter-spacing: 0.03em; line-height: 1.1; }
+.step-title em { color: var(--coral); font-style: normal; }
+.step-desc { margin-top: 6px; font-size: 12px; color: var(--gray-muted); line-height: 1.6; font-weight: 500; }
+
+.options-grid { display: grid; gap: 10px; }
+.options-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.options-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+
+.option-card { border: 2px solid var(--gray-mid); border-radius: var(--radius); padding: 14px 16px; cursor: pointer; transition: all 0.15s; position: relative; background: white; }
+.option-card:hover { border-color: var(--coral); box-shadow: var(--shadow-hover); }
+.option-card.selected { border-color: var(--coral); background: var(--coral-tint); }
+.option-card.selected::before { content: '✓'; position: absolute; top: 8px; right: 10px; background: var(--coral); color: white; width: 18px; height: 18px; border-radius: 50%; font-size: 10px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+.option-title { font-weight: 800; font-size: 13px; color: var(--slate); margin-bottom: 3px; }
+.option-desc  { font-size: 11px; color: var(--gray-muted); line-height: 1.4; }
+
+.section-label { font-size: 10px; font-weight: 800; color: var(--gray-muted); text-transform: uppercase; letter-spacing: 0.1em; margin: 20px 0 8px; }
+.section-label:first-child { margin-top: 0; }
+
+.input-group { margin-bottom: 14px; }
+.input-label { font-size: 11px; font-weight: 700; color: var(--slate); margin-bottom: 5px; display: block; }
+.input-field { width: 100%; border: 2px solid var(--gray-mid); border-radius: var(--radius); padding: 10px 14px; font-family: var(--font); font-size: 13px; font-weight: 600; color: var(--slate); transition: border 0.15s; outline: none; background: white; }
+.input-field:focus { border-color: var(--coral); }
+
+.callout { background: var(--yellow-tint); border-left: 3px solid var(--coral); border-radius: 0 var(--radius) var(--radius) 0; padding: 12px 16px; font-size: 12px; line-height: 1.6; font-weight: 600; color: var(--slate); margin-top: 16px; }
+.callout strong { color: var(--coral); }
+
+.split-visual { margin: 18px 0; }
+.split-bar { height: 44px; border-radius: 8px; overflow: hidden; display: flex; margin-bottom: 8px; }
+.split-brand { background: var(--slate); display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 12px; transition: width 0.4s; }
+.split-activ { background: var(--coral); display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 12px; transition: width 0.4s; }
+.split-labels { display: flex; justify-content: space-between; }
+.split-label { font-size: 10px; font-weight: 700; color: var(--gray-muted); text-transform: uppercase; letter-spacing: 0.07em; }
+
+.budget-output { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+.budget-card { border-radius: var(--radius); padding: 18px; text-align: center; }
+.budget-card.brand-card { background: var(--slate); color: white; }
+.budget-card.activ-card { background: var(--coral); color: white; }
+.budget-amount { font-size: 26px; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+.budget-type   { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.8; }
+
+.metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
+.metric-block { border-radius: var(--radius); padding: 16px; border: 2px solid var(--gray-mid); }
+.metric-block.short { border-color: var(--coral); }
+.metric-block.long  { border-color: var(--slate); }
+.metric-header { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+.metric-block.short .metric-header { color: var(--coral); }
+.metric-block.long  .metric-header { color: var(--slate); }
+.metric-item { font-size: 11px; font-weight: 600; color: var(--slate); padding: 5px 0; border-bottom: 1px solid var(--gray-mid); line-height: 1.4; }
+.metric-item:last-child { border-bottom: none; }
+.metric-item::before { content: '→ '; color: var(--coral); font-weight: 800; }
+
+.results-hero { background: var(--slate); border-radius: var(--radius); padding: 28px 32px; margin-bottom: 16px; position: relative; overflow: hidden; }
+.results-hero::before { content: ''; position: absolute; top: -20px; right: -20px; width: 140px; height: 140px; background: var(--coral); border-radius: 50%; opacity: 0.15; }
+.results-brand-name { font-size: 11px; font-weight: 700; color: var(--gray-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
+.results-title { font-size: 26px; font-weight: 900; color: white; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.1; }
+.results-title em { color: var(--coral); font-style: normal; }
+.results-subtitle { margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--gray-muted); }
+
+.result-section { margin-bottom: 18px; }
+.result-section-title { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--coral); margin-bottom: 10px; padding-bottom: 7px; border-bottom: 2px solid var(--coral-tint); }
+
+.tag-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+.tag { background: var(--yellow-tint); border: 1px solid var(--yellow); color: var(--slate); font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+.tag.coral { background: var(--coral-tint); border-color: var(--coral); }
+.tag.slate { background: var(--slate); color: white; border-color: var(--slate); }
+
+.esov-block { background: var(--gray-light); border-radius: var(--radius); padding: 16px; margin-top: 10px; }
+.esov-title { font-size: 12px; font-weight: 800; color: var(--slate); margin-bottom: 5px; }
+.esov-desc  { font-size: 11px; font-weight: 600; color: var(--gray-muted); line-height: 1.5; }
+.esov-formula { background: var(--slate); color: var(--yellow); font-size: 13px; font-weight: 800; padding: 9px 14px; border-radius: 8px; text-align: center; margin-top: 8px; letter-spacing: 0.04em; }
+
+.btn-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; align-items: center; }
+.btn-primary { background: var(--coral); color: white; font-family: var(--font); font-weight: 800; font-size: 12px; border-radius: var(--radius); padding: 12px 28px; border: none; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; transition: background 0.2s; }
+.btn-primary:hover { background: var(--yellow); color: var(--slate); }
+.btn-secondary { background: transparent; color: var(--gray-muted); font-family: var(--font); font-weight: 700; font-size: 11px; border-radius: var(--radius); padding: 12px 20px; border: 2px solid var(--gray-mid); cursor: pointer; text-transform: uppercase; letter-spacing: 0.04em; transition: all 0.2s; }
+.btn-secondary:hover { border-color: var(--slate); color: var(--slate); }
+.btn-print { background: var(--slate); color: white; font-family: var(--font); font-weight: 800; font-size: 12px; border-radius: var(--radius); padding: 12px 22px; border: none; cursor: pointer; letter-spacing: 0.04em; text-transform: uppercase; transition: background 0.2s; }
+.btn-print:hover { background: var(--coral); }
+
+.footer-note { text-align: center; font-size: 10px; color: var(--gray-muted); font-weight: 600; letter-spacing: 0.05em; margin-top: 32px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-logo"><span>COMPASS</span><span>Campaign Planner</span></div>
+    <div class="header-sub">Binet &amp; Field · IPA Databank · 700+ campaigns</div>
+  </div>
+  <div class="header-right">C · O · M · P · A · S · S</div>
+</div>
+
+<div class="progress-bar" id="progressBar">
+  <div class="step-dot active" id="dot-1" onclick="goTo(1)"><div class="dot-circle">1</div><div class="dot-label">Context</div></div>
+  <div class="step-dot" id="dot-2" onclick="goTo(2)"><div class="dot-circle">2</div><div class="dot-label">Brand</div></div>
+  <div class="step-dot" id="dot-3" onclick="goTo(3)"><div class="dot-circle">3</div><div class="dot-label">Budget</div></div>
+  <div class="step-dot" id="dot-4" onclick="goTo(4)"><div class="dot-circle">4</div><div class="dot-label">Audience</div></div>
+  <div class="step-dot" id="dot-5" onclick="goTo(5)"><div class="dot-circle">5</div><div class="dot-label">Creative</div></div>
+  <div class="step-dot" id="dot-6" onclick="goTo(6)"><div class="dot-circle">6</div><div class="dot-label">Channels</div></div>
+  <div class="step-dot" id="dot-7" onclick="goTo(7)"><div class="dot-circle">7</div><div class="dot-label">Metrics</div></div>
+  <div class="step-dot" id="dot-8" onclick="goTo(8)"><div class="dot-circle">→</div><div class="dot-label">Results</div></div>
+</div>
+
+<div class="main">
+
+<!-- STEP 1 -->
+<div class="screen active" id="screen-1">
+  <div class="card">
+    <div class="step-header">
+      <div class="step-number">Шаг 1 из 7 · C — Context</div>
+      <div class="step-title">Контекст <em>категории</em></div>
+      <div class="step-desc">Ответы на эти вопросы определяют всё остальное — именно контекст «настраивает» правила Binet & Field под ваш конкретный бренд.</div>
+    </div>
+    <div class="section-label">Как потребители принимают решение о покупке?</div>
+    <div class="options-grid cols-3">
+      <div class="option-card" onclick="select('consideration','low',this)"><div class="option-title">Низкая вовлечённость</div><div class="option-desc">FMCG, напитки, продукты. Выбор на автопилоте, привычкой.</div></div>
+      <div class="option-card" onclick="select('consideration','medium',this)"><div class="option-title">Средняя вовлечённость</div><div class="option-desc">Бытовая техника, одежда, косметика. Сравнение без глубокого анализа.</div></div>
+      <div class="option-card" onclick="select('consideration','high',this)"><div class="option-title">Высокая вовлечённость</div><div class="option-desc">Финансы, авто, страхование, B2B. Долгий осознанный выбор.</div></div>
+    </div>
+    <div class="section-label">Что движет выбором больше?</div>
+    <div class="options-grid cols-3">
+      <div class="option-card" onclick="select('decision','emotional',this)"><div class="option-title">Эмоции</div><div class="option-desc">Чувства, образ жизни, идентичность. Логика вторична.</div></div>
+      <div class="option-card" onclick="select('decision','mixed',this)"><div class="option-title">Смешанный</div><div class="option-desc">Важны и рациональные аргументы, и эмоциональная связь.</div></div>
+      <div class="option-card" onclick="select('decision','rational',this)"><div class="option-title">Рациональность</div><div class="option-desc">Характеристики, цена, функциональность. Потребитель сравнивает.</div></div>
+    </div>
+    <div class="section-label">Интенсивность онлайн-исследований перед покупкой</div>
+    <div class="options-grid cols-3">
+      <div class="option-card" onclick="select('research','low',this)"><div class="option-title">Низкая</div><div class="option-desc">Покупают без гугления. Импульсные покупки.</div></div>
+      <div class="option-card" onclick="select('research','medium',this)"><div class="option-title">Средняя</div><div class="option-desc">Пару обзоров, сравнение на сайте.</div></div>
+      <div class="option-card" onclick="select('research','high',this)"><div class="option-title">Высокая</div><div class="option-desc">Агрегаторы, форумы, много отзывов. Страхование, авто, B2B.</div></div>
+    </div>
+    <div class="btn-row"><button class="btn-primary" onclick="nextStep(1)">Далее →</button></div>
+  </div>
+</div>
+
+<!-- STEP 2 -->
+<div class="screen" id="screen-2">
+  <div class="card">
+    <div class="step-header">
+      <div class="step-number">Шаг 2 из 7 · O — Objectives Context</div>
+      <div class="step-title">Бренд и <em>категория</em></div>
+      <div class="step-desc">Стадия жизненного цикла бренда и категории кардинально влияет на соотношение бренд / активация.</div>
+    </div>
+    <div class="input-group"><label class="input-label">Название бренда / продукта</label><input class="input-field" id="brandName" type="text" placeholder="Например: ACME Insurance"></div>
+    <div class="input-group"><label class="input-label">Категория</label><input class="input-field" id="categoryName" type="text" placeholder="Например: Страхование жизни"></div>
+    <div class="section-label">Стадия бренда</div>
+    <div class="options-grid cols-2">
+      <div class="option-card" onclick="select('brandStage','new',this)"><div class="option-title">🚀 Запуск / Новый</div><div class="option-desc">До 2 лет на рынке. Нет знания, нет лояльности. Строим с нуля.</div></div>
+      <div class="option-card" onclick="select('brandStage','growing',this)"><div class="option-title">📈 Растущий</div><div class="option-desc">Есть аудитория, идёт активный прирост доли рынка.</div></div>
+      <div class="option-card" onclick="select('brandStage','established',this)"><div class="option-title">🏔 Зрелый / Лидер</div><div class="option-desc">Высокое знание, стабильная доля. Задача — удержать и расти.</div></div>
+      <div class="option-card" onclick="select('brandStage','declining',this)"><div class="option-title">📉 Ревитализация</div><div class="option-desc">Теряет долю. Нужен перезапуск или защита позиций.</div></div>
+    </div>
+    <div class="section-label">Ценовое позиционирование</div>
+    <div class="options-grid cols-3">
+      <div class="option-card" onclick="select('pricing','premium',this)"><div class="option-title">Премиум</div><div class="option-desc">Цена выше среднего. Сила бренда — ключ к ценовой власти.</div></div>
+      <div class="option-card" onclick="select('pricing','midrange',this)"><div class="option-title">Мидмаркет</div><div class="option-desc">Конкурентная цена в среднем сегменте.</div></div>
+      <div class="option-card" onclick="select('pricing','value',this)"><div class="option-title">Ценовой</div><div class="option-desc">Конкурирует ценой. Value for money.</div></div>
+    </div>
+    <div class="section-label">Стадия категории</div>
+    <div class="options-grid cols-2">
+      <div class="option-card" onclick="select('catStage','emerging',this)"><div class="option-title">Emerging / растущая</div><div class="option-desc">Новая категория или активно растущий рынок.</div></div>
+      <div class="option-card" onclick="select('catStage','mature',this)"><div class="option-title">Зрелая / стабильная</div><div class="option-desc">Рост умеренный или нулевой. Конкурентная борьба за долю.</div></div>
+      <div class="option-card" onclick="select('catStage','declining',this)"><div class="option-title">Сжимающаяся</div><div class="option-desc">Рынок сокращается. Важнее удержать долю и маржу.</div></div>
+      <div class="option-card" onclick="select('catStage','disrupted',this)"><div class="option-title">Disrupted</div><div class="option-desc">Цифровая трансформация меняет модели покупки.</div></div>
+    </div>
+    <div class="btn-row"><button class="btn-secondary" onclick="prevStep(2)">← Назад</button><button class="btn-primary" onclick="nextStep(2)">Далее →</button></div>
+  </div>
+</div>
+
+<!-- STEP 3 -->
+<div class="screen" id="screen-3">
+  <div class="card">
+    <div class="step-header">
+      <div class="step-number">Шаг 3 из 7 · M — Mix Budget</div>
+      <div class="step-title">Бюджет: <em>бренд vs активация</em></div>
+      <div class="step-desc">Правило 60:40 — средняя точка по IPA Databank. Калькулятор скорректирует соотношение на основе вашего контекста.</div>
+    </div>
+    <div class="input-group"><label class="input-label">Годовой рекламный бюджет (в вашей валюте)</label><input class="input-field" id="totalBudget" type="number" placeholder="Например: 10000000" oninput="calcBudget()"></div>
+    <div id="splitBlock" style="display:none">
+      <div class="section-label">Рекомендуемый сплит</div>
+      <div class="split-visual">
+        <div class="split-bar">
+          <div class="split-brand" id="splitBrandBar" style="width:60%">БРЕНД <span id="splitBrandPct">60%</span></div>
+          <div class="split-activ" id="splitActivBar" style="width:40%">АКТИВАЦИЯ <span id="splitActivPct">40%</span></div>
+        </div>
+        <div class="split-labels"><div class="split-label">Строим спрос (долгосрочно)</div><div class="split-label">Конвертируем спрос (краткосрочно)</div></div>
+      </div>
+      <div class="budget-output">
+        <div class="budget-card brand-card"><div class="budget-amount" id="budgetBrand">—</div><div class="budget-type">Бренд-строительство</div></div>
+        <div class="budget-card activ-card"><div class="budget-amount" id="budgetActiv">—</div><div class="budget-type">Активация продаж</div></div>
+      </div>
+      <div class="callout" id="splitRationale"></div>
+    </div>
+    <div class="section-label" style="margin-top:20px">Доля голоса и доля рынка (для расчёта ESOV)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="input-group"><label class="input-label">Доля голоса SOV (%)</label><input class="input-field" id="sovVal" type="number" placeholder="Например: 15"></div>
+      <div class="input-group"><label class="input-label">Доля рынка SOM (%)</label><input class="input-field" id="somVal" type="number" placeholder="Например: 12"></div>
+    </div>
+    <div class="esov-block" id="esovBlock" style="display:none">
+      <div class="esov-title">ESOV — Extra Share of Voice</div>
+      <div class="esov-desc" id="esovDesc"></div>
+      <div class="esov-formula" id="esovFormula"></div>
+    </div>
+    <div class="btn-row"><button class="btn-secondary" onclick="prevStep(3)">← Назад</button><button class="btn-primary" onclick="nextStep(3)">Далее →</button></div>
+  </div>
+</div>
+
+<!-- STEP 4 -->
+<div class="screen" id="screen-4">
+  <div class="card">
+    <div class="step-header">
+      <div class="step-number">Шаг 4 из 7 · P — Penetration Focus</div>
+      <div class="step-title">Стратегия <em>аудитории</em></div>
+      <div class="step-desc">Данные IPA однозначны: penetration всегда опережает loyalty как драйвер роста — в любой категории, при любом контексте.</div>
+    </div>
+    <div class="section-label">Основной фокус кампании</div>
+    <div class="options-grid cols-3">
+      <div class="option-card" onclick="select('audience','acquisition',this)"><div class="option-title">Привлечение новых</div><div class="option-desc">Максимальный долгосрочный рост. IPA: в 3× эффективнее, чем удержание, по бизнес-эффектам.</div></div>
+      <div class="option-card" onclick="select('audience','whole_market',this)"><div class="option-title">Весь рынок ✓ Оптимум</div><div class="option-desc">Новые + существующие. Максимальная эффективность и ROMI. До 10× выше узкого таргетинга.</div></div>
+      <div class="option-card" onclick="select('audience','retention',this)"><div class="option-title">Удержание / лояльность</div><div class="option-desc">Ограниченный, краткосрочный эффект. Не формирует ценовую власть. Только тактически.</div></div>
+    </div>
+    <div class="callout" id="audienceCallout">Выберите аудиторную стратегию выше.</div>
+    <div class="section-label">Горизонт планирования</div>
+    <div class="options-grid cols-3">
+      <div class="option-card" onclick="select('horizon','short',this)"><div class="option-title">Краткосрочная</div><div class="option-desc">До 12 месяцев. Фокус на объёме продаж и ROI.</div></div>
+      <div class="option-card" onclick="select('horizon','medium',this)"><div class="option-title">Средняя</div><div class="option-desc">12–24 месяца. Баланс роста доли и прибыли.</div></div>
+      <div class="option-card" onclick="select('horizon','long',this)"><div class="option-title">Долгосрочная</div><div class="option-desc">24–36+ месяцев. Полный потенциал роста SOM и ценовой силы.</div></div>
+    </div>
+    <div class="btn-row"><button class="btn-secondary" onclick="prevStep(4)">← Назад</button><button class="btn-primary" onclick="nextStep(4)">Далее →</button></div>
+  </div>
+</div>
+
+<!-- STEP 5 -->
+<div class="screen" id="screen-5">
+  <div class="card">
+    <div class="step-header">
+      <div class="step-number">Шаг 5 из 7 · A — Approach Creative</div>
+      <div class="step-title">Творческий <em>подход</em></div>
+      <div class="step-desc">Fame-кампании дают в разы больший долгосрочный эффект, чем рациональные. Тип креатива — ключевой драйвер long-term profitability.</div>
+    </div>
+    <div class="section-label">Бренд-коммуникация</div>
+    <div class="options-grid cols-3">
+      <div class="option-card" onclick="select('brandCreative','fame',this)"><div class="option-title">🏆 Fame / Эмоции</div><div class="option-desc">Яркий, вирусный, порождает buzz. Максимальный долгосрочный эффект по IPA.</div></div>
+      <div class="option-card" onclick="select('brandCreative','emotional',this)"><div class="option-title">❤️ Эмоциональный нарратив</div><div class="option-desc">Строит эмоциональную связь. Снижает ценовую чувствительность.</div></div>
+      <div class="option-card" onclick="select('brandCreative','rational',this)"><div class="option-title">📊 Рациональный / Продуктовый</div><div class="option-desc">Характеристики, факты. Хорош краткосрочно, слаб долгосрочно.</div></div>
+    </div>
+    <div class="section-label">Формат активации</div>
+    <div class="options-grid cols-2">
+      <div class="option-card" onclick="select('activCreative','brand_response',this)"><div class="option-title">Brand Response ✓ Оптимум</div><div class="option-desc">Одна идея: бренд + призыв к действию. Синергия краткосрочного и долгосрочного.</div></div>
+      <div class="option-card" onclick="select('activCreative','promo',this)"><div class="option-title">Промо / Ценовые акции</div><div class="option-desc">Быстрый объём, но ⚠️ повышает ценовую чувствительность. Только тактически.</div></div>
+      <div class="option-card" onclick="select('activCreative','non_price_promo',this)"><div class="option-title">Бренд-промо (без скидок)</div><div class="option-desc">Конкурсы, коллаборации, подарки. Не разрушает ценовую силу бренда.</div></div>
+      <div class="option-card" onclick="select('activCreative','perf',this)"><div class="option-title">Перформанс / DR</div><div class="option-desc">CPA-оптимизация, retargeting. Высокий ROMI, но без бренда быстро дорожает.</div></div>
+    </div>
+    <div class="btn-row"><button class="btn-secondary" onclick="prevStep(5)">← Назад</button><button class="btn-primary" onclick="nextStep(5)">Далее →</button></div>
+  </div>
+</div>
+
+<!-- STEP 6 -->
+<div class="screen" id="screen-6">
+  <div class="card">
+    <div class="step-header">
+      <div class="step-number">Шаг 6 из 7 · S — Spend Channels</div>
+      <div class="step-title">Каналы <em>коммуникации</em></div>
+      <div class="step-desc">ТВ — уникальный канал: лучший в брендинге и мощный в активации. Синергия ТВ + online даёт мультипликативный эффект по IPA.</div>
+    </div>
+    <div class="section-label">Каналы бренд-строительства (можно несколько)</div>
+    <div class="options-grid cols-3">
+      <div class="option-card" onclick="toggleChannel('brand','tv',this)"><div class="option-title">📺 ТВ / Видео</div><div class="option-desc">Лучший канал для долгосрочного бренда. Синергия с digital.</div></div>
+      <div class="option-card" onclick="toggleChannel('brand','digital_brand',this)"><div class="option-title">📱 Digital / YouTube</div><div class="option-desc">Широкий охват, эмоциональный контент. В паре с ТВ — кратный эффект.</div></div>
+      <div class="option-card" onclick="toggleChannel('brand','ooh',this)"><div class="option-title">🏙 OOH / Наружная</div><div class="option-desc">Широкий охват, высокая заметность.</div></div>
+      <div class="option-card" onclick="toggleChannel('brand','audio',this)"><div class="option-title">🎧 Аудио / Подкасты</div><div class="option-desc">Строит ассоциации и эмоциональную близость.</div></div>
+      <div class="option-card" onclick="toggleChannel('brand','pr_content',this)"><div class="option-title">✍️ PR / Контент</div><div class="option-desc">Earned media усиливает fame-эффект и доверие.</div></div>
+      <div class="option-card" onclick="toggleChannel('brand','social_brand',this)"><div class="option-title">📲 Social Brand</div><div class="option-desc">Органический контент и storytelling. Строит сообщество.</div></div>
+    </div>
+    <div class="section-label">Каналы активации (можно несколько)</div>
+    <div class="options-grid cols-3">
+      <div class="option-card" onclick="toggleChannel('activ','search',this)"><div class="option-title">🔍 Платный поиск</div><div class="option-desc">Перехватывает горячий спрос. Лучше работает при сильном бренде.</div></div>
+      <div class="option-card" onclick="toggleChannel('activ','perf_social',this)"><div class="option-title">📈 Performance Social</div><div class="option-desc">Таргетинг, ретаргетинг и look-alike аудитории.</div></div>
+      <div class="option-card" onclick="toggleChannel('activ','email',this)"><div class="option-title">📧 Email / CRM</div><div class="option-desc">Конвертирует тёплую аудиторию. Высокий ROMI на базе.</div></div>
+      <div class="option-card" onclick="toggleChannel('activ','drtv',this)"><div class="option-title">📺 DRTV</div><div class="option-desc">ТВ с прямым ответом. Уникальная синергия бренда и конверсии.</div></div>
+      <div class="option-card" onclick="toggleChannel('activ','display_retarget',this)"><div class="option-title">🎯 Display / Ретаргетинг</div><div class="option-desc">Конвертирует трафик сайта. Лучший ROMI на горячем трафике.</div></div>
+      <div class="option-card" onclick="toggleChannel('activ','promo_trade',this)"><div class="option-title">🏪 Trade / Промо</div><div class="option-desc">Торговое промо, POS-материалы. Работает в точке продажи.</div></div>
+    </div>
+    <div class="btn-row"><button class="btn-secondary" onclick="prevStep(6)">← Назад</button><button class="btn-primary" onclick="nextStep(6)">Далее →</button></div>
+  </div>
+</div>
+
+<!-- STEP 7 -->
+<div class="screen" id="screen-7">
+  <div class="card">
+    <div class="step-header">
+      <div class="step-number">Шаг 7 из 7 · S — Score Metrics</div>
+      <div class="step-title">Метрики и <em>измерение</em></div>
+      <div class="step-desc">Balanced scorecard обязателен. Нельзя управлять брендом только краткосрочными KPI — это путь к деградации долгосрочной прибыли.</div>
+    </div>
+    <div class="metrics-grid">
+      <div class="metric-block short">
+        <div class="metric-header">🔴 Краткосрочные KPI (0–6 мес)</div>
+        <div class="metric-item">Объём продаж / выручка</div>
+        <div class="metric-item">Прямые отклики / конверсии</div>
+        <div class="metric-item">CPA / ROMI кампании</div>
+        <div class="metric-item">Трафик / лиды</div>
+        <div class="metric-item">Share of search</div>
+      </div>
+      <div class="metric-block long">
+        <div class="metric-header">⬛ Долгосрочные KPI (12–36 мес)</div>
+        <div class="metric-item">Доля рынка (SOM)</div>
+        <div class="metric-item">Ценовая эластичность</div>
+        <div class="metric-item">Знание бренда (awareness)</div>
+        <div class="metric-item">Бренд-предпочтение</div>
+        <div class="metric-item">Рост прибыли (profit growth)</div>
+      </div>
+    </div>
+    <div class="callout"><strong>Правило Binet & Field:</strong> Эмоциональные метрики → предсказывают долгосрочный успех. Рациональные метрики → предсказывают краткосрочный успех. Управлять только рациональными/краткосрочными KPI — значит жертвовать прибыльностью ради видимости роста.</div>
+    <div class="section-label">Приоритет KPI</div>
+    <div class="options-grid cols-3">
+      <div class="option-card" onclick="select('kpiPriority','profit',this)"><div class="option-title">Прибыль / маржа</div><div class="option-desc">Требует и объёма, и ценовой силы. Минимум 24 месяца для раскрытия.</div></div>
+      <div class="option-card" onclick="select('kpiPriority','share',this)"><div class="option-title">Доля рынка</div><div class="option-desc">Рост SOM. Эффект ускоряется после 12–18 месяцев инвестиций.</div></div>
+      <div class="option-card" onclick="select('kpiPriority','volume',this)"><div class="option-title">Объём / Выручка</div><div class="option-desc">Быстрый рост продаж. Без ценовой работы прибыль не максимальна.</div></div>
+    </div>
+    <div class="btn-row"><button class="btn-secondary" onclick="prevStep(7)">← Назад</button><button class="btn-primary" onclick="generateResults()">Сгенерировать план →</button></div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="screen" id="screen-8">
+  <div class="results-hero">
+    <div class="results-brand-name" id="resBrandLabel">CAMPAIGN BRIEF</div>
+    <div class="results-title">COMPASS<em>-план</em></div>
+    <div class="results-subtitle" id="resSubtitle">На основе Binet &amp; Field · IPA Databank</div>
+  </div>
+  <div class="card">
+    <div class="result-section"><div class="result-section-title">01 · Контекст кампании</div><div id="resContext"></div></div>
+    <div class="result-section" style="margin-top:16px"><div class="result-section-title">02 · Бюджет: бренд vs активация</div><div id="resBudget"></div></div>
+    <div class="result-section" style="margin-top:16px"><div class="result-section-title">03 · Аудиторная стратегия</div><div id="resAudience"></div></div>
+    <div class="result-section" style="margin-top:16px"><div class="result-section-title">04 · Творческий подход</div><div id="resCreative"></div></div>
+    <div class="result-section" style="margin-top:16px"><div class="result-section-title">05 · Каналы коммуникации</div><div id="resChannels"></div></div>
+    <div class="result-section" style="margin-top:16px"><div class="result-section-title">06 · Метрики и цели</div><div id="resMetrics"></div></div>
+    <div class="result-section" style="margin-top:16px"><div class="result-section-title">07 · ESOV и доля голоса</div><div id="resEsov"></div></div>
+    <div class="callout" style="margin-top:20px" id="resWarnings"></div>
+    <div class="btn-row"><button class="btn-secondary" onclick="goTo(1)">← Начать заново</button><button class="btn-print" onclick="window.print()">🖨 Распечатать</button></div>
+  </div>
+  <div class="footer-note">COMPASS · IPA Databank · Binet & Field 2013, 2018 · Для агентского использования</div>
+</div>
+
+</div>
+
+<script>
+const state = {
+  consideration:null,decision:null,research:null,
+  brandStage:null,pricing:null,catStage:null,
+  brandPct:60,activPct:40,
+  audience:null,horizon:null,
+  brandCreative:null,activCreative:null,
+  kpiPriority:null,
+  channelsBrand:[],channelsActiv:[]
+};
+let currentStep=1;
+
+function goTo(step){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+step).classList.add('active');
+  document.querySelectorAll('.step-dot').forEach((d,i)=>{
+    d.classList.remove('active','completed');
+    if(i+1<step)d.classList.add('completed');
+    if(i+1===step)d.classList.add('active');
+  });
+  currentStep=step;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function nextStep(s){goTo(s+1);}
+function prevStep(s){goTo(s-1);}
+
+function select(key,value,el){
+  el.closest('.options-grid').querySelectorAll('.option-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  state[key]=value;
+  if(key==='audience')updateAudienceCallout();
+  if(['consideration','decision','brandStage','pricing'].includes(key))calcBudget();
+}
+
+function toggleChannel(type,ch,el){
+  el.classList.toggle('selected');
+  const arr=type==='brand'?state.channelsBrand:state.channelsActiv;
+  const idx=arr.indexOf(ch);
+  if(idx===-1)arr.push(ch);else arr.splice(idx,1);
+}
+
+function calcSplit(){
+  let b=60;
+  if(state.consideration==='high')b+=5;
+  if(state.consideration==='low')b-=8;
+  if(state.decision==='rational')b+=7;
+  if(state.decision==='emotional')b-=7;
+  if(state.brandStage==='new')b+=8;
+  if(state.brandStage==='declining')b-=5;
+  if(state.pricing==='premium')b+=5;
+  if(state.pricing==='value')b-=5;
+  b=Math.max(35,Math.min(75,b));
+  return{brand:b,activ:100-b};
+}
+
+function fmt(n){
+  if(n>=1000000)return(n/1000000).toFixed(1).replace(/\.0$/,'')+'M';
+  if(n>=1000)return(n/1000).toFixed(0)+'K';
+  return n.toString();
+}
+
+function calcBudget(){
+  const sp=calcSplit();
+  state.brandPct=sp.brand;state.activPct=sp.activ;
+  const total=parseFloat(document.getElementById('totalBudget').value)||0;
+  document.getElementById('splitBlock').style.display=total>0?'block':'none';
+  document.getElementById('splitBrandBar').style.width=sp.brand+'%';
+  document.getElementById('splitActivBar').style.width=sp.activ+'%';
+  document.getElementById('splitBrandPct').textContent=sp.brand+'%';
+  document.getElementById('splitActivPct').textContent=sp.activ+'%';
+  if(total>0){
+    document.getElementById('budgetBrand').textContent=fmt(Math.round(total*sp.brand/100));
+    document.getElementById('budgetActiv').textContent=fmt(Math.round(total*sp.activ/100));
+  }
+  document.getElementById('splitRationale').innerHTML=buildRationale(sp.brand);
+  const sov=parseFloat(document.getElementById('sovVal').value);
+  const som=parseFloat(document.getElementById('somVal').value);
+  if(!isNaN(sov)&&!isNaN(som)){
+    const esov=sov-som;
+    document.getElementById('esovBlock').style.display='block';
+    document.getElementById('esovFormula').textContent=`ESOV = SOV − SOM = ${sov}% − ${som}% = ${esov>0?'+':''}${esov}%`;
+    document.getElementById('esovDesc').textContent=esov>0?`✅ Положительный ESOV (+${esov}%). Инвестируете сверх рыночной доли — это топливо для роста SOM.`:esov===0?`⚠️ ESOV = 0. Удерживаете позиции, но не растёте.`:`🔴 Отрицательный ESOV (${esov}%). Конкуренты перекрывают ваш голос. Риск потери доли рынка.`;
+  }
+}
+document.getElementById('sovVal').addEventListener('input',calcBudget);
+document.getElementById('somVal').addEventListener('input',calcBudget);
+
+function buildRationale(bp){
+  let r=[];
+  if(bp>63)r.push('бренд-строительство требует <strong>больших вложений</strong> в вашем контексте');
+  if(bp<55)r.push('бренд строится легко — смещаем фокус на <strong>конверсию</strong>');
+  if(state.consideration==='high')r.push('высокая вовлечённость: бренд строить <strong>сложнее</strong>');
+  if(state.decision==='rational')r.push('рациональная категория: нужно <strong>больше вложений</strong> в эмоциональный бренд');
+  if(state.decision==='emotional')r.push('эмоциональная категория: бренд строится легче, <strong>усиливаем конверсию</strong>');
+  if(state.brandStage==='new')r.push('<strong>новый бренд</strong>: без бренд-фундамента активация быстро дорожает');
+  if(state.pricing==='premium')r.push('<strong>премиум</strong>: ценовая власть строится только через сильный бренд');
+  if(state.pricing==='value')r.push('<strong>ценовой сегмент</strong>: активация важнее для стимулирования покупки');
+  return`Базовое 60:40 скорректировано до <strong>${bp}:${100-bp}</strong>. `+(r.length?'Почему: '+r.join('; ')+'.':'Контекст близок к усреднённому по IPA Databank.');
+}
+
+function updateAudienceCallout(){
+  const m={
+    acquisition:'📈 <strong>Новые покупатели</strong> — верная стратегия для долгосрочного роста. IPA: в 3× эффективнее удержания по бизнес-эффектам. Единственная стратегия, дающая ценовую власть через 3+ лет.',
+    whole_market:'✅ <strong>Весь рынок</strong> — оптимум по всем метрикам. ESOV Efficiency до 10× выше узкого таргетинга. Рекомендация Binet & Field.',
+    retention:'⚠️ <strong>Только удержание</strong> — высокий риск. Краткосрочный эффект без ценовой власти. Дополните кампанией на новых покупателей.'
+  };
+  document.getElementById('audienceCallout').innerHTML=m[state.audience]||'Выберите аудиторную стратегию выше.';
+}
+
+function generateResults(){
+  const brand=document.getElementById('brandName').value||'Бренд';
+  const cat=document.getElementById('categoryName').value||'Категория';
+  document.getElementById('resBrandLabel').textContent=(brand+' · '+cat).toUpperCase();
+  document.getElementById('resSubtitle').textContent='Сгенерировано '+new Date().toLocaleDateString('ru-RU')+' · COMPASS by Binet & Field';
+
+  const cM={low:'Низкая',medium:'Средняя',high:'Высокая'};
+  const dM={emotional:'Эмоциональный',mixed:'Смешанный',rational:'Рациональный'};
+  const rM={low:'Низкая',medium:'Средняя',high:'Высокая'};
+  const bM={new:'Запуск',growing:'Рост',established:'Зрелый',declining:'Ревитализация'};
+  const pM={premium:'Премиум',midrange:'Мидмаркет',value:'Ценовой'};
+  const cStM={emerging:'Растущая',mature:'Зрелая',declining:'Сжимающаяся',disrupted:'Disrupted'};
+
+  document.getElementById('resContext').innerHTML=`<div class="tag-row">
+    <span class="tag">Вовлечённость: ${cM[state.consideration]||'—'}</span>
+    <span class="tag">Решение: ${dM[state.decision]||'—'}</span>
+    <span class="tag">Онлайн-исследование: ${rM[state.research]||'—'}</span>
+    <span class="tag coral">Бренд: ${bM[state.brandStage]||'—'}</span>
+    <span class="tag coral">Цена: ${pM[state.pricing]||'—'}</span>
+    <span class="tag slate">Категория: ${cStM[state.catStage]||'—'}</span>
+  </div>`;
+
+  const total=parseFloat(document.getElementById('totalBudget').value)||0;
+  const sov=parseFloat(document.getElementById('sovVal').value);
+  const som=parseFloat(document.getElementById('somVal').value);
+  const bp=state.brandPct,ap=state.activPct;
+  document.getElementById('resBudget').innerHTML=`
+    <div class="split-visual"><div class="split-bar">
+      <div class="split-brand" style="width:${bp}%">БРЕНД ${bp}%</div>
+      <div class="split-activ" style="width:${ap}%">АКТИВАЦИЯ ${ap}%</div>
+    </div></div>
+    ${total>0?`<div class="tag-row"><span class="tag slate">Бренд: ${fmt(Math.round(total*bp/100))}</span><span class="tag coral">Активация: ${fmt(Math.round(total*ap/100))}</span></div>`:''}
+    <div class="callout" style="margin-top:10px">${buildRationale(bp)}</div>`;
+
+  const aM={acquisition:'Привлечение новых покупателей',whole_market:'Весь рынок (оптимум)',retention:'Удержание (тактически)'};
+  const hM={short:'Краткосрочная (до 12 мес)',medium:'Средняя (12–24 мес)',long:'Долгосрочная (24–36+ мес)'};
+  document.getElementById('resAudience').innerHTML=`<div class="tag-row">
+    <span class="tag">${aM[state.audience]||'—'}</span>
+    <span class="tag coral">Горизонт: ${hM[state.horizon]||'—'}</span>
+  </div>
+  <div class="callout" style="margin-top:10px">Широкий охват всего рынка в <strong>10× эффективнее</strong> по ESOV Efficiency. Новые + существующие клиенты — всегда оптимум по IPA.</div>`;
+
+  const bcM={fame:'🏆 Fame / Эмоции — максимальный long-term эффект',emotional:'❤️ Эмоциональный нарратив — строит ценовую власть',rational:'📊 Рациональный — краткосрочные продажи, слабый долгосрок'};
+  const acM={brand_response:'✅ Brand Response — бренд + конверсия в одной идее',promo:'⚠️ Ценовые акции — использовать осторожно',non_price_promo:'✓ Бренд-промо (без скидок) — безопаснее для маржи',perf:'Перформанс / DR — высокий ROMI, но нужен бренд-фундамент'};
+  document.getElementById('resCreative').innerHTML=`
+    <div class="tag-row"><span class="tag slate">${bcM[state.brandCreative]||'Бренд-подход не выбран'}</span></div>
+    <div class="tag-row" style="margin-top:7px"><span class="tag coral">${acM[state.activCreative]||'Формат активации не выбран'}</span></div>`;
+
+  const cnB={tv:'ТВ/Видео',digital_brand:'Digital/YouTube',ooh:'OOH/Наружная',audio:'Аудио/Подкасты',pr_content:'PR/Контент',social_brand:'Social Brand'};
+  const cnA={search:'Платный поиск',perf_social:'Performance Social',email:'Email/CRM',drtv:'DRTV',display_retarget:'Display/Ретаргетинг',promo_trade:'Trade/Промо'};
+  const bCh=state.channelsBrand.length?state.channelsBrand.map(c=>`<span class="tag slate">${cnB[c]||c}</span>`).join(''):'<span class="tag">Не выбраны</span>';
+  const aCh=state.channelsActiv.length?state.channelsActiv.map(c=>`<span class="tag coral">${cnA[c]||c}</span>`).join(''):'<span class="tag">Не выбраны</span>';
+  document.getElementById('resChannels').innerHTML=`
+    <div style="margin-bottom:8px"><div style="font-size:10px;font-weight:800;text-transform:uppercase;color:var(--slate);margin-bottom:5px">Бренд-строительство</div><div class="tag-row">${bCh}</div></div>
+    <div><div style="font-size:10px;font-weight:800;text-transform:uppercase;color:var(--coral);margin-bottom:5px">Активация</div><div class="tag-row">${aCh}</div></div>`;
+
+  const kM={profit:'Прибыль / Маржа: нужны и объём, и ценовая сила — минимум 24 месяца для полного раскрытия',share:'Доля рынка (SOM): эффект ускоряется после 12–18 месяцев непрерывных инвестиций',volume:'Объём / Выручка: быстрый рост возможен, но без ценовой работы прибыль не максимальна'};
+  document.getElementById('resMetrics').innerHTML=`
+    <div class="callout">${kM[state.kpiPriority]||'—'}</div>
+    <div class="metrics-grid">
+      <div class="metric-block short"><div class="metric-header">🔴 KPI 0–6 мес</div><div class="metric-item">Продажи / конверсии</div><div class="metric-item">CPA / ROMI</div><div class="metric-item">Share of search</div></div>
+      <div class="metric-block long"><div class="metric-header">⬛ KPI 12–36 мес</div><div class="metric-item">Доля рынка (SOM)</div><div class="metric-item">Ценовая эластичность</div><div class="metric-item">Знание и предпочтение бренда</div></div>
+    </div>`;
+
+  let esovH='';
+  if(!isNaN(sov)&&!isNaN(som)){
+    const esov=sov-som;
+    esovH=`<div class="esov-block"><div class="esov-title">ESOV = SOV − SOM</div><div class="esov-formula">SOV ${sov}% − SOM ${som}% = ${esov>0?'+':''}${esov}%</div><div class="esov-desc" style="margin-top:8px">${esov>0?'✅ Положительный ESOV — инвестируете сверх рыночной доли. Топливо для роста.':esov===0?'⚠️ ESOV = 0 — удерживаете позиции. Для роста нужно больше.':'🔴 Отрицательный ESOV — конкуренты перекрывают ваш голос. Риск потери доли.'}</div></div>`;
+  }else{
+    esovH='<div class="callout">Введите SOV и SOM на шаге 3 для расчёта ESOV.</div>';
+  }
+  document.getElementById('resEsov').innerHTML=esovH;
+
+  let w=[];
+  if(state.activCreative==='promo')w.push('⚠️ Ценовые акции повышают ценовую чувствительность — снижают долгосрочную маржу.');
+  if(state.audience==='retention')w.push('⚠️ Стратегия только на удержание не даёт ценовой власти и устойчивого роста.');
+  if(state.brandCreative==='rational'&&state.horizon!=='short')w.push('⚠️ Рациональный креатив слабо работает на длинных горизонтах. Рассмотри эмоциональный подход.');
+  if(state.consideration==='low'&&state.brandPct>65)w.push('ℹ️ В low-consideration категориях бренд строится легче — возможно, активация недоинвестирована.');
+  document.getElementById('resWarnings').innerHTML=w.length?'<strong>Внимание:</strong><br>'+w.join('<br>'):'✅ <strong>Стратегических противоречий не обнаружено.</strong> Конфигурация соответствует принципам Binet & Field.';
+
+  goTo(8);
+}
+</script>
+</body>
+</html>
